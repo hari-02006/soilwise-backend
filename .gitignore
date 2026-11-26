@@ -1,0 +1,30 @@
+# Virtual Environment
+.venv/
+env/
+venv/
+ENV/
+
+# Python cache & artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.pytest_cache/
+.pytest_cache/
+*.egg-info/
+
+# Environment Secrets (never commit credentials)
+.env
+.env.local
+.env.*.local
+
+# Frontend node_modules & production builds
+node_modules/
+dist/
+build/
+.cache/
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
