@@ -1,5 +1,7 @@
-import { BarChart2, Cpu, Database, Layers, ShieldCheck } from "lucide-react";
-import { Bar, BarChart, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { BarChart2, Cpu, Database, Layers } from "lucide-react";
+import ConfusionMatrix from "../components/ConfusionMatrix";
+import HeldOutEvaluation from "../components/HeldOutEvaluation";
+import TrainingDataExploration from "../components/TrainingDataExploration";
 import { Alert, Loading } from "../components/ui";
 import { useAsync } from "../hooks/useAsync";
 import { api } from "../services/api";
@@ -12,13 +14,9 @@ export default function Models() {
 
   const sel = m.models[m.selected_model]?.test;
   if (!sel) return <Alert kind="err">Selected model evaluation is unavailable.</Alert>;
-  const max = Math.max(...sel.confusion_matrix.flat(), 1);
   const di = m.dataset_integrity;
   const validation = m.validation ? m.validation.repeats + " × " + m.validation.folds + " folds" : "5 folds";
-  const curve = sel.roc?.micro_average;
-  const rocPoints = curve?.fpr.map((fpr, i) => ({ fpr, tpr: curve.tpr[i] }));
   const eda = m.training_eda;
-  const features = Object.keys(eda?.correlations ?? {});
 
   return (
     <>
@@ -78,29 +76,9 @@ export default function Models() {
           </table>
         </div>
 
-        <div className="card">
-          <h2>Held-out Evaluation ({m.selected_model})</h2>
-          <p>
-            Accuracy {(sel.accuracy * 100).toFixed(2)}%, macro precision {sel.precision_macro.toFixed(4)},
-            macro recall {sel.recall_macro.toFixed(4)}, macro-F1 {sel.f1_macro.toFixed(4)}.
-          </p>
-          {sel.roc && (
-            <>
-              <h3>One-vs-Rest ROC</h3>
-              <p>Macro AUC {sel.roc.macro_auc.toFixed(5)}. The micro-average curve has AUC {sel.roc.micro_average.auc.toFixed(5)}.</p>
-              <ResponsiveContainer width="100%" height={230}>
-                <LineChart data={rocPoints} margin={{ right: 20, bottom: 20, left: 10 }}>
-                  <XAxis dataKey="fpr" type="number" domain={[0, 1]} label={{ value: "False positive rate", position: "bottom" }} />
-                  <YAxis type="number" domain={[0, 1]} label={{ value: "True positive rate", angle: -90, position: "insideLeft" }} />
-                  <Tooltip />
-                  <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 1, y: 1 }]} stroke="#999" strokeDasharray="4 4" />
-                  <Line dataKey="tpr" stroke="#124d36" strokeWidth={2} dot={false} isAnimationActive={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </>
-          )}
-          <p className="hint">Scores describe the curated benchmark. Field validation requires independent soil and climate data.</p>
-        </div>
+        <HeldOutEvaluation model={m.selected_model} result={sel} />
+
+        <ConfusionMatrix model={m.selected_model} labels={sel.labels} counts={sel.confusion_matrix} />
 
         {m.tuning && (
           <div className="card">
@@ -129,36 +107,7 @@ export default function Models() {
           </div>
         )}
 
-        {eda && (
-          <div className="card">
-            <h2>Training Data Exploration</h2>
-            <ResponsiveContainer width="100%" height={230}>
-              <BarChart data={Object.entries(eda.class_counts).map(([crop, count]) => ({ crop, count }))} margin={{ bottom: 45 }}>
-                <XAxis dataKey="crop" interval={0} angle={-55} tick={{ fontSize: 10 }} textAnchor="end" />
-                <YAxis label={{ value: "Samples", angle: -90, position: "insideLeft" }} />
-                <Tooltip />
-                <Bar dataKey="count" fill="#124d36" isAnimationActive={false} />
-              </BarChart>
-            </ResponsiveContainer>
-            <h3>Pearson Correlations</h3>
-            <div style={{ overflowX: "auto" }}>
-              <table>
-                <thead><tr><th>Feature</th>{features.map((f) => <th key={f}>{f}</th>)}</tr></thead>
-                <tbody>{features.map((row) => (
-                  <tr key={row}>
-                    <th scope="row">{row}</th>
-                    {features.map((column) => {
-                      const value = eda.correlations[row][column];
-                      return <td key={column} style={{
-                        backgroundColor: value < 0 ? "rgba(194, 65, 12, " + Math.abs(value) / 3 + ")" : "rgba(18, 77, 54, " + value / 3 + ")",
-                      }}>{value.toFixed(2)}</td>;
-                    })}
-                  </tr>
-                ))}</tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        {eda && <TrainingDataExploration data={eda} />}
 
         <div className="grid g2">
           {/* Feature Importance */}
@@ -223,41 +172,6 @@ export default function Models() {
               Source: Crop Recommendation Dataset. Integrity checks summarize the input CSV.
             </p>
           </div>
-        </div>
-
-        {/* Confusion Matrix */}
-        <div className="card">
-          <div className="row" style={{ gap: 8, marginBottom: 8 }}>
-            <ShieldCheck size={20} color="#124d36" />
-            <h2>Confusion Matrix ({m.selected_model} on Test Partition)</h2>
-          </div>
-          <div style={{ overflowX: "auto", marginTop: 12 }}>
-            <div
-              className="cm"
-              style={{
-                gridTemplateColumns: `repeat(${sel.labels.length}, minmax(24px, 1fr))`,
-                minWidth: 580,
-              }}
-            >
-              {sel.confusion_matrix.flatMap((row, i) =>
-                row.map((v, j) => (
-                  <div
-                    key={`${i}-${j}`}
-                    title={`Actual: ${sel.labels[i]} | Predicted: ${sel.labels[j]} (${v} instances)`}
-                    style={{
-                      background: v > 0 ? `rgba(18, 77, 54, ${Math.max(0.15, v / max)})` : "#f3f5f3",
-                      color: v / max > 0.45 ? "#ffffff" : "#132219",
-                    }}
-                  >
-                    {v || ""}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-          <p className="hint" style={{ marginTop: 10 }}>
-            Vertical axis: Actual classes | Horizontal axis: Model predictions in alphabetical order: {sel.labels.join(", ")}. Hover over cells for detailed counts.
-          </p>
         </div>
 
         {/* K-Means Clusters */}

@@ -198,6 +198,7 @@ h3 { font-size: 1.05rem; font-weight: 700; color: var(--text-main); }
 main {
   padding: 32px 42px;
   max-width: 1240px;
+  min-width: 0;
   width: 100%;
 }
 
@@ -602,27 +603,355 @@ tbody tr:hover {
   transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Confusion Matrix */
-.cm {
-  display: grid;
-  gap: 2px;
-  font-size: 0.68rem;
-  font-weight: 600;
+/* Model Intelligence */
+.model-insight {
+  min-width: 0;
 }
 
-.cm div {
-  aspect-ratio: 1;
+.insight-intro, .insight-takeaway {
+  margin: 6px 0 14px;
+  color: var(--text-muted);
+}
+
+.insight-takeaway strong {
+  color: var(--text-main);
+}
+
+.insight-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.insight-stats > div {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: #f8faf8;
+}
+
+.insight-stats dt {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.insight-stats dd {
+  margin: 2px 0 0;
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+}
+
+.insight-stats small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.77rem;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.insight-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.insight-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.insight-toolbar .hint {
+  margin: 4px 0 0;
+}
+
+.insight-select {
+  display: grid;
+  gap: 4px;
+  font-size: 0.83rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.insight-select select {
+  min-height: 38px;
+}
+
+.insight-auc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 12px 0;
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  background: var(--primary-subtle);
+  color: var(--primary);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.insight-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  color: var(--text-muted);
+  font-size: 0.81rem;
+}
+
+.insight-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.insight-roc-line, .insight-roc-baseline {
+  width: 19px;
+  border-top: 2px solid var(--primary);
+}
+
+.insight-roc-baseline {
+  border-top: 2px dashed #64786c;
+}
+
+.insight-roc-key .btn {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+}
+
+.insight-chart {
+  min-width: 0;
+  margin-top: 8px;
+}
+
+.insight-crop-bars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
+  gap: 5px 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.insight-crop-bars li {
+  display: grid;
+  grid-template-columns: minmax(6.5rem, 38%) 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.84rem;
+  text-transform: capitalize;
+  overflow-wrap: anywhere;
+}
+
+.insight-crop-bars strong {
+  min-width: 2.5ch;
+  text-align: right;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.insight-bar-track {
+  height: 8px;
+  border-radius: 9px;
+  background: var(--primary-subtle);
+}
+
+.insight-bar-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #267453;
+}
+
+.insight-correlation-legend {
+  margin-bottom: 10px;
+}
+
+.insight-correlation-legend i {
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: #fff;
+}
+
+.insight-correlation-legend .insight-negative {
+  background: rgba(194, 65, 12, 0.3);
+}
+
+.insight-correlation-legend .insight-positive {
+  background: rgba(18, 77, 54, 0.3);
+}
+
+.insight-correlations {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+
+.insight-correlations:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.insight-correlations th, .insight-correlations td {
+  padding: 8px 10px;
+  text-align: center;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.insight-correlations th {
+  font-size: 0.77rem;
+  text-transform: none;
+}
+
+.insight-correlations th:first-child {
+  position: sticky;
+  left: 0;
+  text-align: left;
+}
+
+.insight-strongest {
+  box-shadow: inset 0 0 0 2px #267453;
+  font-weight: 800;
+}
+
+.insight-footer {
+  margin: 12px 0 0;
+}
+
+/* Confusion Matrix */
+.confusion-matrix {
+  min-width: 0;
+}
+
+.confusion-matrix-heading {
+  gap: 8px;
+  color: var(--primary);
+}
+
+.confusion-summary {
+  margin: 8px 0 16px;
+  color: var(--text-muted);
+}
+
+.confusion-summary strong {
+  color: var(--text-main);
+}
+
+.confusion-errors {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+
+.confusion-errors h3 {
+  padding: 12px 14px 8px;
+}
+
+.confusion-crop {
+  text-transform: capitalize;
+}
+
+.confusion-error-label {
+  color: #9a3412;
+  font-weight: 700;
+}
+
+.confusion-controls, .confusion-legend, .confusion-legend span {
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 3px;
-  transition: transform 0.15s ease;
+  gap: 8px;
 }
 
-.cm div:hover {
-  transform: scale(1.15);
+.confusion-controls {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 16px 0 10px;
+}
+
+.confusion-legend {
+  gap: 16px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.confusion-legend i {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}
+
+.confusion-scroll {
+  overflow: auto;
+}
+
+.confusion-heatmap {
+  max-height: 30rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+
+.confusion-heatmap:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.confusion-heatmap caption {
+  padding: 9px 12px;
+  background: var(--primary-subtle);
+  text-align: left;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.confusion-heatmap th, .confusion-heatmap td {
+  min-width: 4.5rem;
+  padding: 8px 10px;
+  text-align: center;
+  white-space: nowrap;
+  border-right: 1px solid var(--border);
+}
+
+.confusion-heatmap thead th {
+  position: sticky;
+  top: 0;
   z-index: 2;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.confusion-heatmap th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+}
+
+.confusion-heatmap thead th:first-child {
+  z-index: 3;
+}
+
+.confusion-correct {
+  background: #cdeedc;
+  color: #10472f;
+  font-weight: 700;
+}
+
+.confusion-error {
+  background: #a43a14;
+  color: #fff;
+  font-weight: 800;
+}
+
+.confusion-zero {
+  color: var(--text-muted);
 }
 
 .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
