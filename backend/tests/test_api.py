@@ -23,6 +23,27 @@ def test_health_model_loaded():
     assert r["model"]["loaded"] and r["model"]["name"] == "RandomForest"
 
 
+def test_metrics_expose_one_held_out_evaluation_and_roc():
+    response = c.get("/api/model/metrics")
+    assert response.status_code == 200
+    metrics = response.json()
+    models = metrics["models"]
+    chosen = metrics["selected_model"]
+    assert [name for name, result in models.items() if "test" in result] == [chosen]
+    assert len(models) >= 4 and "MajorityBaseline" in models
+    held_out = models[chosen]["test"]
+    assert sum(map(sum, held_out["confusion_matrix"])) == metrics["split"]["test_rows"]
+    roc = held_out["roc"]
+    assert set(roc["per_class"]) == set(held_out["labels"])
+    assert roc["macro_auc"] == pytest.approx(
+        sum(curve["auc"] for curve in roc["per_class"].values()) / len(held_out["labels"])
+    )
+    for curve in [roc["micro_average"], *roc["per_class"].values()]:
+        assert len(curve["fpr"]) == len(curve["tpr"])
+        assert (curve["fpr"][0], curve["tpr"][0]) == (0, 0)
+        assert (curve["fpr"][-1], curve["tpr"][-1]) == (1, 1)
+
+
 def test_real_model_predicts_rice_for_rice_profile():
     r = c.post("/api/crop/recommend", json=GOOD).json()
     assert r["top_crops"][0]["crop"] == "rice" and len(r["top_crops"]) == 3

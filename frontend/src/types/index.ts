@@ -32,15 +32,33 @@ export interface UploadResult {
   method: string; extracted: Record<string, ExtractedValue>; found_parameters: string[];
   detected_npk_unit: "kg_per_ha" | "unknown"; raw_text_preview: string; warning: string;
 }
+interface RocCurve { fpr: number[]; tpr: number[]; auc: number }
 export interface ModelResult {
-  cv_accuracy_mean: number; cv_accuracy_std: number; cv_f1_macro_mean: number;
-  test: { accuracy: number; precision_macro: number; recall_macro: number; f1_macro: number; confusion_matrix: number[][]; labels: string[] };
+  cv_accuracy_mean: number; cv_accuracy_std: number; cv_f1_macro_mean: number; cv_f1_macro_std?: number;
+  test?: {
+    accuracy: number; precision_macro: number; recall_macro: number; f1_macro: number;
+    confusion_matrix: number[][]; labels: string[];
+    roc?: { macro_auc: number; micro_average: RocCurve; per_class: Record<string, RocCurve> };
+  };
 }
 export interface Metrics {
   selected_model: string; model_version: string; trained_at: string; models: Record<string, ModelResult>;
   feature_importance: Record<string, number>;
   dataset_integrity: { rows: number; missing_values: number; duplicate_rows: number; n_classes: number;
     samples_per_class_min_max: number[]; iqr_outlier_counts: Record<string, number>; feature_ranges: Record<string, number[]> };
+  split?: { training_rows: number; test_rows: number };
+  validation?: { folds: number; repeats: number };
+  training_eda?: {
+    class_counts: Record<string, number>;
+    feature_summary: Record<string, { mean: number; std: number; min: number; max: number }>;
+    correlations: Record<string, Record<string, number>>;
+  };
+  tuning?: {
+    inner_folds: number; outer_folds: number;
+    best_parameters: Record<string, string | number | null>;
+    outer_cv: ModelResult;
+  };
+  ablation?: Record<string, ModelResult & { delta_macro_f1: number }>;
   kmeans: { silhouette_by_k: Record<string, number>; chosen_k: number;
     cluster_profiles: Record<string, Record<string, number>>; top_crops_per_cluster: Record<string, Record<string, number>> };
 }

@@ -1,7 +1,10 @@
 """Data loading, integrity checks and splitting for the crop dataset."""
 from pathlib import Path
 import pandas as pd
+from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 ROOT = Path(__file__).resolve().parent.parent
 DATA_PATH = ROOT / "datasets" / "crop_recommendation.csv"
@@ -39,3 +42,8 @@ def split(df: pd.DataFrame):
     """Stratified 80/20 split. The test set is untouched until final evaluation (no leakage)."""
     return train_test_split(df[FEATURES], df[TARGET], test_size=0.2,
                             stratify=df[TARGET], random_state=RANDOM_STATE)
+
+
+def numeric_preprocessing():
+    """Each fit learns its own imputation and scaling values from the supplied rows."""
+    return make_pipeline(SimpleImputer(strategy="median", keep_empty_features=True), StandardScaler())

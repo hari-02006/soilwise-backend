@@ -13,7 +13,8 @@ def _metrics():
 
 
 def range_warnings(values: dict) -> list[str]:
-    rng = _metrics().get("dataset_integrity", {}).get("feature_ranges", {})
+    metrics = _metrics()
+    rng = metrics.get("training_integrity", metrics.get("dataset_integrity", {})).get("feature_ranges", {})
     w = []
     for f, v in values.items():
         if f in rng and not (rng[f][0] <= v <= rng[f][1]):

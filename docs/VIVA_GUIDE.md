@@ -1,6 +1,6 @@
 # Viva guide (answers reflect this project's real results)
-1. **Why Random Forest?** Chosen by 5-fold stratified CV macro-F1 on training data (0.9937 vs XGBoost 0.9920, Decision Tree 0.9852), not by test score. Test accuracy 99.32%.
-2. **Why are scores so high - is it overfitting?** Not leakage (split before fitting, CV inside training), but the dataset is balanced and nearly separable, so it is easy. Real field data would score lower. Say this before the examiner does.
+1. **Why Random Forest?** It scored highest in repeated stratified training CV macro-F1 (0.9932 versus XGBoost 0.9900 and Decision Tree 0.9840). Nested grid search then tuned its parameters. The selected model achieved 99.55% accuracy on the same held-out benchmark split used in the original project.
+2. **Why are scores so high?** The curated dataset is balanced and nearly separable. The preprocessing fits on training folds, and an independent field dataset is needed to measure geographic and seasonal generalization.
 3. **What does the probability mean?** Random Forest averages tree votes. It is the model's score, not crop-success likelihood. Often 100% here because of separable data.
 4. **How does Random Forest work?** Many decision trees on bootstrap samples with random feature subsets; majority/average vote reduces variance.
 5. **Why stratified split and CV?** Keeps class proportions; CV gives a variance estimate (std in metrics).

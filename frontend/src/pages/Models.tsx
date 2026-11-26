@@ -1,4 +1,5 @@
 import { BarChart2, Cpu, Database, Layers, ShieldCheck } from "lucide-react";
+import { Bar, BarChart, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Alert, Loading } from "../components/ui";
 import { useAsync } from "../hooks/useAsync";
 import { api } from "../services/api";
@@ -9,9 +10,15 @@ export default function Models() {
   if (loading) return <Loading text="Loading ML model performance metrics..." />;
   if (error || !m) return <Alert kind="err">{error}</Alert>;
 
-  const sel = m.models[m.selected_model].test;
+  const sel = m.models[m.selected_model]?.test;
+  if (!sel) return <Alert kind="err">Selected model evaluation is unavailable.</Alert>;
   const max = Math.max(...sel.confusion_matrix.flat(), 1);
   const di = m.dataset_integrity;
+  const validation = m.validation ? m.validation.repeats + " × " + m.validation.folds + " folds" : "5 folds";
+  const curve = sel.roc?.micro_average;
+  const rocPoints = curve?.fpr.map((fpr, i) => ({ fpr, tpr: curve.tpr[i] }));
+  const eda = m.training_eda;
+  const features = Object.keys(eda?.correlations ?? {});
 
   return (
     <>
@@ -21,7 +28,7 @@ export default function Models() {
         </span>
         <h1>Model Intelligence &amp; Benchmark Metrics</h1>
         <p>
-          Performance evaluation, 5-fold cross validation, and statistical clustering metrics computed on model version <strong>{m.model_version}</strong> (trained {m.trained_at.slice(0, 10)}).
+          Validation and clustering results for <strong>{m.model_version}</strong> (trained {m.trained_at.slice(0, 10)}).
         </p>
       </div>
 
@@ -30,7 +37,7 @@ export default function Models() {
         <div className="card">
           <div className="row" style={{ gap: 8, marginBottom: 12 }}>
             <Layers size={20} color="#124d36" />
-            <h2>Candidate Model Evaluation (5-Fold Cross-Validation)</h2>
+            <h2>Candidate Comparison ({validation})</h2>
           </div>
           <table>
             <thead>
@@ -38,10 +45,6 @@ export default function Models() {
                 <th>Model Architecture</th>
                 <th>CV Accuracy (Mean ± Std)</th>
                 <th>CV Macro-F1</th>
-                <th>Test Accuracy</th>
-                <th>Test Precision</th>
-                <th>Test Recall</th>
-                <th>Test F1 Score</th>
               </tr>
             </thead>
             <tbody>
@@ -65,20 +68,97 @@ export default function Models() {
                   <td>
                     {(r.cv_accuracy_mean * 100).toFixed(2)}% ± {(r.cv_accuracy_std * 100).toFixed(2)}%
                   </td>
-                  <td>{r.cv_f1_macro_mean.toFixed(4)}</td>
-                  <td>{(r.test.accuracy * 100).toFixed(2)}%</td>
-                  <td>{r.test.precision_macro.toFixed(4)}</td>
-                  <td>{r.test.recall_macro.toFixed(4)}</td>
-                  <td>{r.test.f1_macro.toFixed(4)}</td>
+                  <td>
+                    {r.cv_f1_macro_mean.toFixed(4)}
+                    {r.cv_f1_macro_std !== undefined && " ± " + r.cv_f1_macro_std.toFixed(4)}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        <Alert kind="warn">
-          High accuracy scores (&gt;98%) are typical for this balanced dataset (exactly {di.samples_per_class_min_max[0]} samples across all {di.n_classes} crops). The model has robustly captured non-linear feature boundaries across soil parameters.
-        </Alert>
+        <div className="card">
+          <h2>Held-out Evaluation ({m.selected_model})</h2>
+          <p>
+            Accuracy {(sel.accuracy * 100).toFixed(2)}%, macro precision {sel.precision_macro.toFixed(4)},
+            macro recall {sel.recall_macro.toFixed(4)}, macro-F1 {sel.f1_macro.toFixed(4)}.
+          </p>
+          {sel.roc && (
+            <>
+              <h3>One-vs-Rest ROC</h3>
+              <p>Macro AUC {sel.roc.macro_auc.toFixed(5)}. The micro-average curve has AUC {sel.roc.micro_average.auc.toFixed(5)}.</p>
+              <ResponsiveContainer width="100%" height={230}>
+                <LineChart data={rocPoints} margin={{ right: 20, bottom: 20, left: 10 }}>
+                  <XAxis dataKey="fpr" type="number" domain={[0, 1]} label={{ value: "False positive rate", position: "bottom" }} />
+                  <YAxis type="number" domain={[0, 1]} label={{ value: "True positive rate", angle: -90, position: "insideLeft" }} />
+                  <Tooltip />
+                  <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 1, y: 1 }]} stroke="#999" strokeDasharray="4 4" />
+                  <Line dataKey="tpr" stroke="#124d36" strokeWidth={2} dot={false} isAnimationActive={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </>
+          )}
+          <p className="hint">Scores describe the curated benchmark. Field validation requires independent soil and climate data.</p>
+        </div>
+
+        {m.tuning && (
+          <div className="card">
+            <h2>Nested Grid Search</h2>
+            <p>{m.tuning.outer_folds} outer folds, {m.tuning.inner_folds} inner folds. Outer macro-F1 {m.tuning.outer_cv.cv_f1_macro_mean.toFixed(4)} ± {m.tuning.outer_cv.cv_f1_macro_std?.toFixed(4)}.</p>
+            <ul>
+              {Object.entries(m.tuning.best_parameters).map(([key, value]) => (
+                <li key={key}>{key.replace("model__", "").replace(/_/g, " ")} = {value ?? "unlimited"}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {m.ablation && (
+          <div className="card">
+            <h2>Feature Ablation (Training CV)</h2>
+            <table>
+              <thead><tr><th>Inputs</th><th>Macro-F1</th><th>Change</th></tr></thead>
+              <tbody>{Object.entries(m.ablation).map(([feature, row]) => (
+                <tr key={feature}>
+                  <td>{feature === "all_features" ? "All features" : "Without " + feature}</td>
+                  <td>{row.cv_f1_macro_mean.toFixed(4)} ± {row.cv_f1_macro_std?.toFixed(4)}</td>
+                  <td>{row.delta_macro_f1.toFixed(4)}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
+
+        {eda && (
+          <div className="card">
+            <h2>Training Data Exploration</h2>
+            <ResponsiveContainer width="100%" height={230}>
+              <BarChart data={Object.entries(eda.class_counts).map(([crop, count]) => ({ crop, count }))} margin={{ bottom: 45 }}>
+                <XAxis dataKey="crop" interval={0} angle={-55} tick={{ fontSize: 10 }} textAnchor="end" />
+                <YAxis label={{ value: "Samples", angle: -90, position: "insideLeft" }} />
+                <Tooltip />
+                <Bar dataKey="count" fill="#124d36" isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+            <h3>Pearson Correlations</h3>
+            <div style={{ overflowX: "auto" }}>
+              <table>
+                <thead><tr><th>Feature</th>{features.map((f) => <th key={f}>{f}</th>)}</tr></thead>
+                <tbody>{features.map((row) => (
+                  <tr key={row}>
+                    <th scope="row">{row}</th>
+                    {features.map((column) => {
+                      const value = eda.correlations[row][column];
+                      return <td key={column} style={{
+                        backgroundColor: value < 0 ? "rgba(194, 65, 12, " + Math.abs(value) / 3 + ")" : "rgba(18, 77, 54, " + value / 3 + ")",
+                      }}>{value.toFixed(2)}</td>;
+                    })}
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         <div className="grid g2">
           {/* Feature Importance */}
@@ -113,8 +193,8 @@ export default function Models() {
             <table>
               <tbody>
                 <tr>
-                  <td style={{ fontWeight: 600 }}>Total Training Records</td>
-                  <td>{di.rows} rows</td>
+                  <td style={{ fontWeight: 600 }}>Dataset Records</td>
+                  <td>{di.rows} rows{m.split && " (" + m.split.training_rows + " training, " + m.split.test_rows + " test)"}</td>
                 </tr>
                 <tr>
                   <td style={{ fontWeight: 600 }}>Missing / Null Values</td>
@@ -140,7 +220,7 @@ export default function Models() {
               </tbody>
             </table>
             <p className="hint" style={{ marginTop: 10 }}>
-              Primary source: Crop Recommendation Open Dataset. Preprocessed and normalized with scikit-learn standard pipelines.
+              Source: Crop Recommendation Dataset. Integrity checks summarize the input CSV.
             </p>
           </div>
         </div>

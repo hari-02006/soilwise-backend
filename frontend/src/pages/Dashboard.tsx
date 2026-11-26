@@ -7,6 +7,8 @@ import { api } from "../services/api";
 export default function Dashboard({ go }: { go: (p: string, id?: string) => void }) {
   const stats = useAsync(api.stats);
   const metrics = useAsync(api.metrics);
+  const currentModel = metrics.data?.selected_model;
+  const accuracy = currentModel ? metrics.data?.models[currentModel]?.test?.accuracy : undefined;
 
   return (
     <>
@@ -39,12 +41,10 @@ export default function Dashboard({ go }: { go: (p: string, id?: string) => void
             <Award size={22} color="#d97706" />
           </div>
           <b>
-            {metrics.data
-              ? `${(metrics.data.models[metrics.data.selected_model].test.accuracy * 100).toFixed(1)}%`
-              : "-"}
+            {accuracy === undefined ? "-" : (accuracy * 100).toFixed(1) + "%"}
           </b>
           <span style={{ fontSize: "0.8rem", color: "#526359" }}>
-            {metrics.data?.selected_model} (5-fold CV Verified)
+            {currentModel && currentModel + " on the held-out split"}
           </span>
         </div>
 
